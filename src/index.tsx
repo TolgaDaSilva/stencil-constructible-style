@@ -1,12 +1,12 @@
 import { h, Host, getElement } from "@stencil/core";
-import { VNode, ComponentInstance } from "@stencil/core/dist/declarations";
+import { VNode, ComponentInterface } from "@stencil/core";
 
 const supportsConstructibleStylesheets = (() => {
   try { return !!new CSSStyleSheet(); }
   catch (e) { return false; }
 })();
 
-declare type ConstructibleStyleDecorator = (target: ComponentInstance, propertyKey: string) => void
+declare type ConstructibleStyleDecorator = (target: ComponentInterface, propertyKey: string) => void
 
 /**
  * Dynamically create a constructible stylesheet which is applied to the component.
@@ -24,30 +24,30 @@ As a function:
 export function ConstructibleStyle(
   opts: ConstructibleStyleOptions = {}
 ): ConstructibleStyleDecorator {
-  
-  return (target: ComponentInstance, propertyKey: string) => {
+
+  return (target: ComponentInterface, propertyKey: string) => {
 
     if (!opts.cacheKeyProperty) {
       opts.cacheKeyProperty = propertyKey;
     }
 
     const { componentWillLoad, render } = target;
-    if (!componentWillLoad) console.warn(`ConstructibleStyle requires you to have a \`componentWillLoad\` lifecycle method in \`${ target.constructor.name }\`. Failure to add this function may cause ConstructibleStyle to fail due to StencilJS build optimizations.`);
+    if (!componentWillLoad) console.warn(`ConstructibleStyle requires you to have a \`componentWillLoad\` lifecycle method in \`${target.constructor.name}\`. Failure to add this function may cause ConstructibleStyle to fail due to StencilJS build optimizations.`);
 
     if (supportsConstructibleStylesheets) {
-      target.componentWillLoad = function() {
+      target.componentWillLoad = function () {
         const cssText = (typeof this[propertyKey] === "function" ? this[propertyKey]() : this[propertyKey]);
         const willLoadResult = componentWillLoad && componentWillLoad.call(this);
 
         const host = getElement(this);
         const root = (host.shadowRoot || host) as any;
         root.adoptedStyleSheets = [...root.adoptedStyleSheets || [], getOrCreateStylesheet(this, target, cssText, opts)];
-  
+
         return willLoadResult;
       }
 
     } else {
-      target.render = function() {
+      target.render = function () {
         const cssText = (typeof this[propertyKey] === "function" ? this[propertyKey]() : this[propertyKey]);
         let renderedNode: VNode = render.call(this);
 
@@ -55,7 +55,7 @@ export function ConstructibleStyle(
           appendStyleToHost(renderedNode, target.constructor.name, cssText);
 
         } else {
-          renderedNode = <Host>{ renderedNode }</Host>;
+          renderedNode = <Host>{renderedNode}</Host>;
 
           if (!('attachShadow' in HTMLElement.prototype)) {
             appendStyleToHost(renderedNode, target.constructor.name, cssText);
@@ -80,13 +80,13 @@ export function ConstructibleStyle(
 
 function appendStyleToHost(node, targetName, cssText) {
   (getHostChildren(node) || []).push(
-    <style type="text/css" constructible-style={ targetName }>{ cssText }</style>
+    <style type="text/css" constructible-style={targetName}>{cssText}</style>
   );
 }
 
 function getOrCreateStylesheet(
-  instance: ComponentInstance,
-  target: ComponentInstance,
+  instance: ComponentInterface,
+  target: ComponentInterface,
   cssText: string,
   opts: ConstructibleStyleOptions,
 ): CSSStyleSheet {
